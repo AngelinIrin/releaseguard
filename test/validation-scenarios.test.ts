@@ -188,11 +188,12 @@ describe('ReleaseGuard Comprehensive Validation Scenarios', () => {
   describe('6. Quality Gate Exit Code Policy', () => {
     function computeExitCode(
       overall: Severity | 'REVIEW' | 'INCOMPLETE',
-      flags: {strict?: boolean; advisory?: boolean} = {},
+      flags: {strict?: boolean; advisory?: boolean; 'fail-closed'?: boolean} = {},
     ): number {
       if (!flags.advisory) {
         if (overall === 'FAIL') return 1
         if (flags.strict && (overall === 'REVIEW' || overall === 'INCOMPLETE')) return 1
+        if (flags['fail-closed'] && overall === 'INCOMPLETE') return 1
       }
       return 0
     }
@@ -219,6 +220,14 @@ describe('ReleaseGuard Comprehensive Validation Scenarios', () => {
 
     it('blocks (exit 1) on INCOMPLETE when --strict is enabled', () => {
       assert.equal(computeExitCode('INCOMPLETE', {strict: true}), 1)
+    })
+
+    it('blocks (exit 1) on INCOMPLETE when --fail-closed is enabled', () => {
+      assert.equal(computeExitCode('INCOMPLETE', {'fail-closed': true}), 1)
+    })
+
+    it('permits (exit 0) on REVIEW when --fail-closed is enabled (warnings remain advisory)', () => {
+      assert.equal(computeExitCode('REVIEW', {'fail-closed': true}), 0)
     })
 
     it('does not block (exit 0) even on FAIL when --advisory is enabled', () => {

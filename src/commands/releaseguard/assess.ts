@@ -49,6 +49,10 @@ export default class Assess extends AgentiaCommand {
       description: 'Strict mode: fail on warnings as well as blocking failures',
       default: false,
     }),
+    'fail-closed': Flags.boolean({
+      description: 'Fail-closed policy: treat missing evidence (UNKNOWN) as blocking release gates',
+      default: false,
+    }),
     advisory: Flags.boolean({
       description: 'Advisory mode: always exit with code 0 regardless of findings (do not block)',
       default: false,
@@ -296,11 +300,14 @@ export default class Assess extends AgentiaCommand {
     // Quality Gate Exit Code Policy
     // Default: FAIL blocks (exit code 1); WARN/UNKNOWN are advisory (exit code 0)
     // --strict: Elevates WARN and UNKNOWN to block (exit code 1)
+    // --fail-closed: Elevates UNKNOWN (missing evidence) to block (exit code 1)
     // --advisory: Never blocks (exit code 0)
     if (!flags.advisory) {
       if (overall === 'FAIL') {
         process.exitCode = 1
       } else if (flags.strict && (overall === 'REVIEW' || overall === 'INCOMPLETE')) {
+        process.exitCode = 1
+      } else if (flags['fail-closed'] && overall === 'INCOMPLETE') {
         process.exitCode = 1
       }
     }
