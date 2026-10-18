@@ -44,6 +44,15 @@ export default class Assess extends AgentiaCommand {
       description: 'Include detailed diagnostic evidence in output',
       default: false,
     }),
+    strict: Flags.boolean({
+      char: 's',
+      description: 'Strict mode: fail on warnings as well as blocking failures',
+      default: false,
+    }),
+    advisory: Flags.boolean({
+      description: 'Advisory mode: always exit with code 0 regardless of findings (do not block)',
+      default: false,
+    }),
   }
 
   public async run(): Promise<ReleaseGuardReport> {
@@ -283,6 +292,18 @@ export default class Assess extends AgentiaCommand {
 
       this.log('\nNote: Read-only assessment. No metadata, deployment, or promotion was modified.\n')
     })
+
+    // Quality Gate Exit Code Policy
+    // Default: FAIL blocks (exit code 1); WARN/UNKNOWN are advisory (exit code 0)
+    // --strict: Elevates WARN and UNKNOWN to block (exit code 1)
+    // --advisory: Never blocks (exit code 0)
+    if (!flags.advisory) {
+      if (overall === 'FAIL') {
+        process.exitCode = 1
+      } else if (flags.strict && (overall === 'REVIEW' || overall === 'INCOMPLETE')) {
+        process.exitCode = 1
+      }
+    }
 
     return report
   }

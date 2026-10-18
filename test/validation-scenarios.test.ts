@@ -183,4 +183,46 @@ describe('ReleaseGuard Comprehensive Validation Scenarios', () => {
       assert.equal(computeOverall(findings), 'PASS')
     })
   })
+
+  // Scenario 6: Quality Gate Exit Code Policy
+  describe('6. Quality Gate Exit Code Policy', () => {
+    function computeExitCode(
+      overall: Severity | 'REVIEW' | 'INCOMPLETE',
+      flags: {strict?: boolean; advisory?: boolean} = {},
+    ): number {
+      if (!flags.advisory) {
+        if (overall === 'FAIL') return 1
+        if (flags.strict && (overall === 'REVIEW' || overall === 'INCOMPLETE')) return 1
+      }
+      return 0
+    }
+
+    it('blocks (exit 1) on FAIL by default', () => {
+      assert.equal(computeExitCode('FAIL'), 1)
+    })
+
+    it('does not block (exit 0) on REVIEW (warnings) by default (advisory)', () => {
+      assert.equal(computeExitCode('REVIEW'), 0)
+    })
+
+    it('does not block (exit 0) on INCOMPLETE by default (advisory)', () => {
+      assert.equal(computeExitCode('INCOMPLETE'), 0)
+    })
+
+    it('does not block (exit 0) on PASS', () => {
+      assert.equal(computeExitCode('PASS'), 0)
+    })
+
+    it('blocks (exit 1) on REVIEW when --strict is enabled', () => {
+      assert.equal(computeExitCode('REVIEW', {strict: true}), 1)
+    })
+
+    it('blocks (exit 1) on INCOMPLETE when --strict is enabled', () => {
+      assert.equal(computeExitCode('INCOMPLETE', {strict: true}), 1)
+    })
+
+    it('does not block (exit 0) even on FAIL when --advisory is enabled', () => {
+      assert.equal(computeExitCode('FAIL', {advisory: true}), 0)
+    })
+  })
 })
