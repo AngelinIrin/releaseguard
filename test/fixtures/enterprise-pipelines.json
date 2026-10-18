@@ -1,0 +1,74 @@
+{
+  "pipelines": [
+    {
+      "id": "a0phm000000X1Y1AA0",
+      "name": "Enterprise Financial Services Pipeline",
+      "active": true,
+      "mainBranch": "main",
+      "platform": "SFDX",
+      "connections": [
+        {
+          "id": "conn-001",
+          "branch": "feature/US-0000024",
+          "sourceEnvironment": {"id": "env-dev1", "name": "Dev1-SFP"},
+          "destinationEnvironment": {"id": "env-int", "name": "INT-SFP"}
+        },
+        {
+          "id": "conn-002",
+          "branch": "feature/US-0000025",
+          "sourceEnvironment": {"id": "env-dev2", "name": "Dev2-SFP"},
+          "destinationEnvironment": {"id": "env-int", "name": "INT-SFP"}
+        },
+        {
+          "id": "conn-003",
+          "branch": "integration",
+          "sourceEnvironment": {"id": "env-int", "name": "INT-SFP"},
+          "destinationEnvironment": {"id": "env-uat", "name": "UAT-SFP"}
+        },
+        {
+          "id": "conn-004",
+          "branch": "uat",
+          "sourceEnvironment": {"id": "env-uat", "name": "UAT-SFP"},
+          "destinationEnvironment": {"id": "env-stg", "name": "Staging-SFP"}
+        },
+        {
+          "id": "conn-005",
+          "branch": "main",
+          "sourceEnvironment": {"id": "env-stg", "name": "Staging-SFP"},
+          "destinationEnvironment": {"id": "env-prod", "name": "Production-SFP"}
+        }
+      ]
+    },
+    {
+      "id": "a0phm000000X1Y2AA0",
+      "name": "Legacy CRM Migration Pipeline",
+      "active": false,
+      "mainBranch": "legacy-main",
+      "platform": "SFDX",
+      "connections": []
+    },
+    {
+      "id": "a0phm000000X1Y3AA0",
+      "name": "Partner Portal Sandbox Pipeline",
+      "active": true,
+      "mainBranch": "portal-main",
+      "platform": "SFDX",
+      "connections": [
+        {
+          "id": "conn-broken",
+          "branch": "portal-dev",
+          "sourceEnvironment": {"id": "env-portal-dev", "name": "PortalDev"},
+          "destinationEnvironment": null
+        }
+      ]
+    }
+  ],
+  "environments": [
+    {"id": "env-dev1", "name": "Dev1-SFP", "type": "Sandbox"},
+    {"id": "env-dev2", "name": "Dev2-SFP", "type": "Sandbox"},
+    {"id": "env-int", "name": "INT-SFP", "type": "Sandbox"},
+    {"id": "env-uat", "name": "UAT-SFP", "type": "Sandbox"},
+    {"id": "env-stg", "name": "Staging-SFP", "type": "Sandbox"},
+    {"id": "env-prod", "name": "Production-SFP", "type": "Production"}
+  ]
+}

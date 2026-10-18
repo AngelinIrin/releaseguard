@@ -1,0 +1,64 @@
+[
+  {
+    "id": "JOB-0019482",
+    "name": "Nightly Regression & Apex Test Suite",
+    "templateName": "Enterprise Apex Test & Quality Gate",
+    "status": "Failed",
+    "createdDate": "2026-10-18T22:00:00Z",
+    "steps": [
+      {
+        "id": "STEP-001",
+        "name": "Apex Unit Tests: PaymentGatewayServiceTest & TransactionTriggerTest",
+        "type": "ApexTest",
+        "status": "Failed",
+        "result": "System.AssertException: Assertion Failed: Expected 200 OK, Got 500. Code coverage: 64% (minimum 75% required)"
+      },
+      {
+        "id": "STEP-002",
+        "name": "Apex Code Coverage Aggregator",
+        "type": "QualityGate",
+        "status": "Failed",
+        "result": "Overall package coverage is 68.2%, below the mandatory 75% governance threshold."
+      }
+    ]
+  },
+  {
+    "id": "JOB-0019483",
+    "name": "Pre-Flight Validation CheckOnly",
+    "templateName": "SFDX CheckOnly Validation",
+    "status": "Success",
+    "createdDate": "2026-10-18T20:15:00Z",
+    "steps": [
+      {
+        "id": "STEP-003",
+        "name": "Metadata Component Validation",
+        "type": "Validation",
+        "status": "Success",
+        "result": "Validated 14 components with zero deployment errors."
+      },
+      {
+        "id": "STEP-004",
+        "name": "Apex Unit Tests: SmokeSuite",
+        "type": "ApexTest",
+        "status": "Success",
+        "result": "48/48 unit tests passed successfully. Coverage: 91%."
+      }
+    ]
+  },
+  {
+    "id": "JOB-0019484",
+    "name": "Security & PMD Static Scanner",
+    "templateName": "Copado Static Code Analysis",
+    "status": "Success",
+    "createdDate": "2026-10-18T18:00:00Z",
+    "steps": [
+      {
+        "id": "STEP-005",
+        "name": "PMD Rule Enforcement",
+        "type": "QualityScan",
+        "status": "Success",
+        "result": "No priority 1 or priority 2 violations found."
+      }
+    ]
+  }
+]

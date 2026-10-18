@@ -1,0 +1,119 @@
+{
+  "status": "warn",
+  "summary": {
+    "total": 18,
+    "pass": 14,
+    "warn": 2,
+    "fail": 2
+  },
+  "checks": [
+    {
+      "name": "Git Repository Connection Health",
+      "status": "pass",
+      "description": "Git repository 'Copado-AgentiaCopadoIrinSFP' is authenticated via valid OAuth/SSH credentials.",
+      "fixGuidance": null
+    },
+    {
+      "name": "Metadata Deployment Service Availability",
+      "status": "pass",
+      "description": "Copado backend deployment engines and Salesforce Metadata API endpoints are operating normally.",
+      "fixGuidance": null
+    },
+    {
+      "name": "Environment Credentials Encryption",
+      "status": "pass",
+      "description": "All 6 registered environment credentials use AES-256 encrypted authentication tokens.",
+      "fixGuidance": null
+    },
+    {
+      "name": "Copado License Allocation",
+      "status": "pass",
+      "description": "Active users have valid Copado Admin and Copado User feature licenses assigned.",
+      "fixGuidance": null
+    },
+    {
+      "name": "User Story Branching Integrity",
+      "status": "pass",
+      "description": "Active user stories follow feature-branch naming conventions aligned to pipeline settings.",
+      "fixGuidance": null
+    },
+    {
+      "name": "Salesforce CLI / Agentia Runtime Sync",
+      "status": "pass",
+      "description": "CLI runtime plugins match version compatibility requirements (v1.0.0-rc.0).",
+      "fixGuidance": null
+    },
+    {
+      "name": "Quality Gate Policy Definition",
+      "status": "pass",
+      "description": "Mandatory quality gates are enabled for INT and UAT deployment stages.",
+      "fixGuidance": null
+    },
+    {
+      "name": "Static Analysis Engine Ruleset",
+      "status": "pass",
+      "description": "PMD static analysis ruleset is linked and active on pipeline stages.",
+      "fixGuidance": null
+    },
+    {
+      "name": "Release Cadence Schedule",
+      "status": "pass",
+      "description": "Sprint release container is scheduled and open for current promotion cycle.",
+      "fixGuidance": null
+    },
+    {
+      "name": "Apex Test Automation Thresholds",
+      "status": "pass",
+      "description": "Minimum test coverage requirement is configured at 75% for production deployments.",
+      "fixGuidance": null
+    },
+    {
+      "name": "Continuous Integration Webhook Health",
+      "status": "pass",
+      "description": "GitHub webhook endpoints for branch synchronization are responding with HTTP 200.",
+      "fixGuidance": null
+    },
+    {
+      "name": "Metadata Backup & Snapshot Verification",
+      "status": "pass",
+      "description": "Production metadata snapshot was completed within the last 24 hours.",
+      "fixGuidance": null
+    },
+    {
+      "name": "Permission Set & Profile Matrix",
+      "status": "pass",
+      "description": "Deployment user profiles have necessary permissions to deploy CustomObject and Apex classes.",
+      "fixGuidance": null
+    },
+    {
+      "name": "Pipeline Stage Connection Matrix",
+      "status": "pass",
+      "description": "Forward promotion paths exist from development to production without isolated stages.",
+      "fixGuidance": null
+    },
+    {
+      "name": "Stale User Story Feature Branches",
+      "status": "warn",
+      "description": "Found 4 feature branches with no commit activity in the last 30 calendar days.",
+      "fixGuidance": "Audit and delete stale feature branches or sync them with upstream integration."
+    },
+    {
+      "name": "Sandbox API Consumption Volume",
+      "status": "warn",
+      "description": "Daily 24-hour Salesforce API consumption in Dev1-SFP has reached 82% of org threshold.",
+      "fixGuidance": "Monitor bulk deployment scripts to avoid exceeding daily 24-hour API call allocations."
+    },
+    {
+      "name": "Production Rollback Strategy Definition",
+      "status": "fail",
+      "description": "Production stage does not have an automated rollback job or backup branch designated.",
+      "fixGuidance": "Configure an automated rollback job execution or backup git branch on the Production stage."
+    },
+    {
+      "name": "Uncommitted Destructive Changes Manifest",
+      "status": "fail",
+      "description": "Detected unvalidated destructiveChanges.xml removing fields referenced by active triggers.",
+      "fixGuidance": "Validate destructive manifest against downstream schema dependencies before promotion."
+    }
+  ]
+}
