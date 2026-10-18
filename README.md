@@ -90,10 +90,35 @@ agentia releaseguard assess
 agentia releaseguard assess --ai
 ```
 
-### 3. Generate JSON for CI/CD Quality Gates
+### 3. Generate JSON for Automation
 ```sh
 agentia releaseguard assess --json
 ```
+
+### 4. Enforce as a CI/CD Quality Gate
+ReleaseGuard adheres to a strict exit code policy designed for headless CI/CD pipelines and Agentia pre-submission hooks:
+- **Default Policy:** `FAIL` blocks with exit code `1`. `WARN` and `UNKNOWN` are advisory (exit code `0`).
+- **Strict Mode (`--strict`):** Elevates warnings and incomplete evidence to blocking failures (exit code `1`).
+- **Advisory Mode (`--advisory`):** Always exits with code `0` for purely informational scans.
+
+```sh
+# Block promotions if any critical failure is detected
+agentia releaseguard assess --ai
+
+# Enforce strict zero-warning policy
+agentia releaseguard assess --strict
+```
+
+### 5. Native Copado Agentia Pre-Submission Hook
+Copado Agentia CLI natively executes project-root `.agentia_quality_gates.cmd` (Windows) or `.agentia_quality_gates.sh` (macOS/Linux) before `agentia cicd work submit` and `agentia cicd work test`.
+
+By adding ReleaseGuard to `.agentia_quality_gates.cmd`:
+```cmd
+@echo off
+agentia releaseguard assess --ai
+exit /b %ERRORLEVEL%
+```
+Whenever a developer runs `agentia cicd work submit` or `agentia cicd work test`, ReleaseGuard automatically gates progression—halting submission on blockers and permitting progression when all checks pass.
 
 ---
 
