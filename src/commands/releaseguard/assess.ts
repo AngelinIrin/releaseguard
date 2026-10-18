@@ -131,8 +131,7 @@ export default class Assess extends AgentiaCommand {
       let status: Severity = 'PASS'
       if (failCount > 0) status = 'FAIL'
       else if (warnCount > 0) status = 'WARN'
-      else if (unknownCount > 0 && c.passCount === 0) status = 'UNKNOWN'
-      else if (unknownCount > 0) status = 'WARN'
+      else if (unknownCount > 0) status = 'UNKNOWN'
 
       const totalCount = c.passCount + failCount + warnCount + unknownCount
 
@@ -159,11 +158,9 @@ export default class Assess extends AgentiaCommand {
       ? 'FAIL'
       : totalWarnings > 0
         ? 'REVIEW'
-        : totalUnknowns > 0 && totalPassed === 0
+        : totalUnknowns > 0
           ? 'INCOMPLETE'
-          : totalUnknowns > 0
-            ? 'REVIEW'
-            : 'PASS'
+          : 'PASS'
 
     // Optional AI Advisor analysis
     let aiAdvice = null
