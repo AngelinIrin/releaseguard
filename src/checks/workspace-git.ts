@@ -79,53 +79,56 @@ export async function evaluateWorkspaceAndGitConflicts(
     // 3. Conflict Detection against base branch
     if (baseBranch && branch && baseBranch !== branch) {
       try {
-        let mergeBase = ''
-        try {
-          mergeBase = execSync(`git merge-base HEAD origin/${baseBranch}`, {
-            cwd: options?.cwd,
-            encoding: 'utf8',
-            stdio: ['ignore', 'pipe', 'ignore'],
-            timeout: 4000,
-          }).trim()
-        } catch {
-          mergeBase = execSync(`git merge-base HEAD ${baseBranch}`, {
-            cwd: options?.cwd,
-            encoding: 'utf8',
-            stdio: ['ignore', 'pipe', 'ignore'],
-            timeout: 4000,
-          }).trim()
+        const refsToCompare = [baseBranch, `origin/${baseBranch}`]
+        let checkedAny = false
+        let foundConflict = false
+
+        for (const ref of refsToCompare) {
+          try {
+            const mergeBase = execSync(`git merge-base HEAD ${ref}`, {
+              cwd: options?.cwd,
+              encoding: 'utf8',
+              stdio: ['ignore', 'pipe', 'ignore'],
+              timeout: 4000,
+            }).trim()
+
+            if (mergeBase) {
+              checkedAny = true
+              const mergeTree = execSync(`git merge-tree ${mergeBase} HEAD ${ref}`, {
+                cwd: options?.cwd,
+                encoding: 'utf8',
+                stdio: ['ignore', 'pipe', 'ignore'],
+                timeout: 5000,
+              })
+
+              if (mergeTree.includes('<<<<<<<') || mergeTree.includes('changed in both')) {
+                foundConflict = true
+                findings.push({
+                  severity: 'FAIL',
+                  category: 'Workspace & Git Conflicts',
+                  check: `Metadata merge conflict with ${baseBranch}`,
+                  evidence: `Branch '${branch}' has conflicting metadata changes with target base branch '${baseBranch}'.`,
+                  recommendation:
+                    `Pull and merge '${baseBranch}' into '${branch}' locally and resolve merge conflicts before promoting in Copado.`,
+                })
+                break
+              }
+            }
+          } catch {
+            // Ref might not exist (e.g. no remote or no local checkout), continue
+          }
         }
 
-        if (mergeBase) {
-          let mergeTree = ''
-          try {
-            mergeTree = execSync(`git merge-tree ${mergeBase} HEAD origin/${baseBranch}`, {
-              cwd: options?.cwd,
-              encoding: 'utf8',
-              stdio: ['ignore', 'pipe', 'ignore'],
-              timeout: 5000,
-            })
-          } catch {
-            mergeTree = execSync(`git merge-tree ${mergeBase} HEAD ${baseBranch}`, {
-              cwd: options?.cwd,
-              encoding: 'utf8',
-              stdio: ['ignore', 'pipe', 'ignore'],
-              timeout: 5000,
-            })
-          }
-
-          if (mergeTree.includes('<<<<<<<') || mergeTree.includes('changed in both')) {
-            findings.push({
-              severity: 'FAIL',
-              category: 'Workspace & Git Conflicts',
-              check: `Metadata merge conflict with ${baseBranch}`,
-              evidence: `Branch '${branch}' has conflicting metadata changes with target base branch '${baseBranch}'.`,
-              recommendation:
-                `Pull and merge '${baseBranch}' into '${branch}' locally and resolve merge conflicts before promoting in Copado.`,
-            })
-          } else {
-            passCount++
-          }
+        if (checkedAny && !foundConflict) {
+          passCount++
+        } else if (!checkedAny) {
+          findings.push({
+            severity: 'UNKNOWN',
+            category: 'Workspace & Git Conflicts',
+            check: `Base branch comparison: ${baseBranch}`,
+            evidence: `Could not compare branch against '${baseBranch}' (remote branch may need fetching).`,
+            recommendation: `Run 'git fetch origin ${baseBranch}' to enable automated conflict pre-checks.`,
+          })
         }
       } catch {
         findings.push({
