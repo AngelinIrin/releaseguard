@@ -5,11 +5,13 @@ export async function evaluatePipelineTopology(
   host: AgentiaPluginHost,
 ): Promise<{
   findings: Finding[]
+  passCount: number
   pipelinesCount: number | null
   environmentsCount: number | null
   authStatus: Record<string, {configured?: boolean; ready?: boolean; source?: string}>
 }> {
   const findings: Finding[] = []
+  let passCount = 0
 
   // 1. Authentication Status
   let authStatus: Record<string, {configured?: boolean; ready?: boolean; source?: string}> = {}
@@ -42,6 +44,8 @@ export async function evaluatePipelineTopology(
           recommendation:
             'Verify connectivity with a supported, non-destructive operation before relying on this service.',
         })
+      } else {
+        passCount++
       }
     }
   } catch (err) {
@@ -67,6 +71,8 @@ export async function evaluatePipelineTopology(
         evidence: 'No environments were returned by Copado.',
         recommendation: 'Confirm environment setup and permissions in your Copado org.',
       })
+    } else {
+      passCount++
     }
   } catch (err) {
     findings.push({
@@ -95,7 +101,10 @@ export async function evaluatePipelineTopology(
       })
     } else {
       for (const pipeline of pipelines) {
+        let pipelineHealthy = true
+
         if (pipeline.active === false) {
+          pipelineHealthy = false
           findings.push({
             severity: 'WARN',
             category: 'Pipeline & Topology',
@@ -111,6 +120,7 @@ export async function evaluatePipelineTopology(
           const label = details.name ?? details.id
 
           if (connections.length === 0) {
+            pipelineHealthy = false
             findings.push({
               severity: 'UNKNOWN',
               category: 'Pipeline & Topology',
@@ -130,6 +140,7 @@ export async function evaluatePipelineTopology(
           )
 
           if (incompleteConnections.length > 0) {
+            pipelineHealthy = false
             findings.push({
               severity: 'UNKNOWN',
               category: 'Pipeline & Topology',
@@ -140,6 +151,7 @@ export async function evaluatePipelineTopology(
             })
           }
         } catch {
+          pipelineHealthy = false
           findings.push({
             severity: 'UNKNOWN',
             category: 'Pipeline & Topology',
@@ -147,6 +159,10 @@ export async function evaluatePipelineTopology(
             evidence: 'The SDK could not retrieve individual pipeline details.',
             recommendation: 'Verify pipeline details in Copado and retry the assessment.',
           })
+        }
+
+        if (pipelineHealthy) {
+          passCount++
         }
       }
     }
@@ -160,5 +176,5 @@ export async function evaluatePipelineTopology(
     })
   }
 
-  return {findings, pipelinesCount, environmentsCount, authStatus}
+  return {findings, passCount, pipelinesCount, environmentsCount, authStatus}
 }

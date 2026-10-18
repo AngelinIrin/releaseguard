@@ -5,10 +5,12 @@ export async function evaluateJobsAndApexTests(
   host: AgentiaPluginHost,
 ): Promise<{
   findings: Finding[]
+  passCount: number
   jobsCount: number | null
 }> {
   const findings: Finding[] = []
   let jobsCount: number | null = null
+  let passCount = 0
 
   try {
     const jobs = await host.job.list({pageSize: 20})
@@ -23,7 +25,7 @@ export async function evaluateJobsAndApexTests(
         recommendation:
           'Ensure Apex test suites are executed in the source sandbox or validated via Copado before promotion.',
       })
-      return {findings, jobsCount: 0}
+      return {findings, passCount: 0, jobsCount: 0}
     }
 
     let foundTestStep = false
@@ -31,9 +33,11 @@ export async function evaluateJobsAndApexTests(
     for (const job of jobs) {
       const jobLabel = job.name ?? job.id
       const template = job.templateName ? ` (${job.templateName})` : ''
+      let jobFailed = false
 
       // Check overall job status
       if (job.status && /\b(fail|failed|failure|error)\b/i.test(job.status)) {
+        jobFailed = true
         findings.push({
           severity: 'FAIL',
           category: 'Quality & Test Coverage',
@@ -53,6 +57,7 @@ export async function evaluateJobsAndApexTests(
           if (isTestStep) {
             foundTestStep = true
             if (step.status && /\b(fail|failed|failure|error)\b/i.test(step.status)) {
+              jobFailed = true
               findings.push({
                 severity: 'FAIL',
                 category: 'Quality & Test Coverage',
@@ -64,6 +69,10 @@ export async function evaluateJobsAndApexTests(
             }
           }
         }
+      }
+
+      if (!jobFailed) {
+        passCount++
       }
     }
 
@@ -88,5 +97,5 @@ export async function evaluateJobsAndApexTests(
     })
   }
 
-  return {findings, jobsCount}
+  return {findings, passCount, jobsCount}
 }

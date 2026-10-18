@@ -5,18 +5,21 @@ export async function evaluatePromotionsAndValidations(
   host: AgentiaPluginHost,
 ): Promise<{
   findings: Finding[]
+  passCount: number
   promotionsCount: number | null
 }> {
   const findings: Finding[] = []
   let promotionsCount: number | null = null
+  let passCount = 0
 
   try {
     const promotions = await host.promotion.list({pageSize: 200})
     promotionsCount = promotions?.length ?? 0
 
     if (promotionsCount === 0) {
-      // In Copado, having 0 active promotions is not necessarily a failure; it simply means no open promotions.
-      return {findings, promotionsCount: 0}
+      // Clean queue is a passing check
+      passCount = 1
+      return {findings, passCount, promotionsCount: 0}
     }
 
     for (const promotion of promotions) {
@@ -26,8 +29,10 @@ export async function evaluatePromotionsAndValidations(
         ? ` (to ${promotion.destinationEnvironmentName})`
         : ''
 
-      // Failure states
+      let hasIssue = false
+
       if (/\b(fail|failed|failure|error)\b/i.test(status)) {
+        hasIssue = true
         findings.push({
           severity: 'FAIL',
           category: 'Promotions & Validations',
@@ -36,9 +41,8 @@ export async function evaluatePromotionsAndValidations(
           recommendation:
             'Inspect the promotion deployment error log in Copado and resolve the issue before proceeding.',
         })
-      }
-      // Merge conflict state
-      else if (/\b(conflict|merge conflict)\b/i.test(status)) {
+      } else if (/\b(conflict|merge conflict)\b/i.test(status)) {
+        hasIssue = true
         findings.push({
           severity: 'FAIL',
           category: 'Promotions & Validations',
@@ -47,9 +51,8 @@ export async function evaluatePromotionsAndValidations(
           recommendation:
             'Resolve the Git/metadata conflicts in the feature branch before re-attempting promotion.',
         })
-      }
-      // Validation failed specific state
-      else if (/validation\s*fail/i.test(status)) {
+      } else if (/validation\s*fail/i.test(status)) {
+        hasIssue = true
         findings.push({
           severity: 'FAIL',
           category: 'Promotions & Validations',
@@ -58,9 +61,8 @@ export async function evaluatePromotionsAndValidations(
           recommendation:
             'Check Apex test results and metadata dependencies in the destination environment.',
         })
-      }
-      // Cancelled or Incomplete
-      else if (/cancelled|aborted|stopped/i.test(status)) {
+      } else if (/cancelled|aborted|stopped/i.test(status)) {
+        hasIssue = true
         findings.push({
           severity: 'WARN',
           category: 'Promotions & Validations',
@@ -69,6 +71,10 @@ export async function evaluatePromotionsAndValidations(
           recommendation:
             'Confirm if this promotion should be rerun or abandoned.',
         })
+      }
+
+      if (!hasIssue) {
+        passCount++
       }
     }
   } catch (err) {
@@ -82,5 +88,5 @@ export async function evaluatePromotionsAndValidations(
     })
   }
 
-  return {findings, promotionsCount}
+  return {findings, passCount, promotionsCount}
 }

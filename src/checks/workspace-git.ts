@@ -6,6 +6,7 @@ export async function evaluateWorkspaceAndGitConflicts(
   host: AgentiaPluginHost,
 ): Promise<{
   findings: Finding[]
+  passCount: number
   activeStory: string | null
   branch: string | null
   baseBranch: string | null
@@ -14,6 +15,7 @@ export async function evaluateWorkspaceAndGitConflicts(
   let activeStory: string | null = null
   let branch: string | null = null
   let baseBranch: string | null = null
+  let passCount = 0
 
   try {
     const ws = await host.workspace.current()
@@ -21,6 +23,9 @@ export async function evaluateWorkspaceAndGitConflicts(
       activeStory = ws.workItemName ?? ws.workItemTitle ?? null
       branch = ws.branch ?? null
       baseBranch = ws.baseBranch ?? null
+      if (activeStory) {
+        passCount++
+      }
     }
   } catch (err) {
     findings.push({
@@ -64,12 +69,13 @@ export async function evaluateWorkspaceAndGitConflicts(
         recommendation:
           'Commit or stash changes before promoting to avoid releasing incomplete metadata or experiencing branch discrepancies.',
       })
+    } else {
+      passCount++
     }
 
     // 3. Conflict Detection against base branch
     if (baseBranch && branch && baseBranch !== branch) {
       try {
-        // Find merge base
         let mergeBase = ''
         try {
           mergeBase = execSync(`git merge-base HEAD origin/${baseBranch}`, {
@@ -86,7 +92,6 @@ export async function evaluateWorkspaceAndGitConflicts(
         }
 
         if (mergeBase) {
-          // Check for conflicts using git merge-tree
           let mergeTree = ''
           try {
             mergeTree = execSync(`git merge-tree ${mergeBase} HEAD origin/${baseBranch}`, {
@@ -111,10 +116,11 @@ export async function evaluateWorkspaceAndGitConflicts(
               recommendation:
                 `Pull and merge '${baseBranch}' into '${branch}' locally and resolve merge conflicts before promoting in Copado.`,
             })
+          } else {
+            passCount++
           }
         }
       } catch {
-        // Base branch might not be fetched locally or upstream not configured
         findings.push({
           severity: 'UNKNOWN',
           category: 'Workspace & Git Conflicts',
@@ -125,7 +131,6 @@ export async function evaluateWorkspaceAndGitConflicts(
       }
     }
   } catch {
-    // Not a git repository or git not accessible
     findings.push({
       severity: 'UNKNOWN',
       category: 'Workspace & Git Conflicts',
@@ -136,5 +141,5 @@ export async function evaluateWorkspaceAndGitConflicts(
     })
   }
 
-  return {findings, activeStory, branch, baseBranch}
+  return {findings, passCount, activeStory, branch, baseBranch}
 }

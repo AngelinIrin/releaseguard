@@ -5,9 +5,11 @@ import type {Finding} from '../types.js'
 
 export async function evaluateCodeAndMetadataHygiene(): Promise<{
   findings: Finding[]
+  passCount: number
 }> {
   const findings: Finding[] = []
   const cwd = process.cwd()
+  let passCount = 0
 
   // 1. ESLint & Static Analysis Check
   const hasEslintConfig =
@@ -19,7 +21,6 @@ export async function evaluateCodeAndMetadataHygiene(): Promise<{
 
   if (hasEslintConfig) {
     try {
-      // Run eslint in read-only check mode on modified or staged files
       const lintOutput = execSync('npx eslint . --ext .js,.ts --format json', {
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'ignore'],
@@ -46,6 +47,8 @@ export async function evaluateCodeAndMetadataHygiene(): Promise<{
           evidence: `Found ${warningCount} lint warning(s) across project files.`,
           recommendation: 'Review ESLint warnings to ensure clean code standards.',
         })
+      } else {
+        passCount++
       }
     } catch {
       findings.push({
@@ -77,7 +80,6 @@ export async function evaluateCodeAndMetadataHygiene(): Promise<{
       const parsed = JSON.parse(content)
       const dependencies = parsed.packageDirectories?.[0]?.dependencies
       if (Array.isArray(dependencies) && dependencies.length > 0) {
-        // Dependencies are declared
         const missingDeps = dependencies.filter((d: any) => !d.package || !d.versionNumber)
         if (missingDeps.length > 0) {
           findings.push({
@@ -87,7 +89,11 @@ export async function evaluateCodeAndMetadataHygiene(): Promise<{
             evidence: `${missingDeps.length} dependency entry in sfdx-project.json is missing required attributes.`,
             recommendation: 'Verify package dependency version numbers in sfdx-project.json.',
           })
+        } else {
+          passCount++
         }
+      } else {
+        passCount++
       }
     } catch {
       findings.push({
@@ -107,7 +113,9 @@ export async function evaluateCodeAndMetadataHygiene(): Promise<{
       recommendation:
         'Run the release assessment from within your Salesforce project directory to enable manifest dependency checks.',
     })
+  } else {
+    passCount++
   }
 
-  return {findings}
+  return {findings, passCount}
 }

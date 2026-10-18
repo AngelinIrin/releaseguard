@@ -6,6 +6,7 @@ export async function evaluateOrganizationHealth(
 ): Promise<{
   findings: Finding[]
   summary: {total: number; pass: number; warn: number; fail: number} | null
+  passCount: number
 }> {
   const findings: Finding[] = []
 
@@ -19,10 +20,15 @@ export async function evaluateOrganizationHealth(
         evidence: 'The SDK returned an empty health check report.',
         recommendation: 'Check Agentia permissions and rerun the assessment.',
       })
-      return {findings, summary: null}
+      return {findings, summary: null, passCount: 0}
     }
 
-    for (const check of health.checks) {
+    const checks = health.checks ?? []
+    const passCount = checks.filter(c => c.status === 'pass').length
+    const warnCount = checks.filter(c => c.status === 'warn').length
+    const failCount = checks.filter(c => c.status === 'fail').length
+
+    for (const check of checks) {
       if (check.status === 'fail') {
         findings.push({
           severity: 'FAIL',
@@ -53,14 +59,17 @@ export async function evaluateOrganizationHealth(
       }
     }
 
+    const summary = health.summary ?? {
+      total: checks.length,
+      pass: passCount,
+      warn: warnCount,
+      fail: failCount,
+    }
+
     return {
       findings,
-      summary: health.summary ?? {
-        total: health.checks.length,
-        pass: health.checks.filter(c => c.status === 'pass').length,
-        warn: health.checks.filter(c => c.status === 'warn').length,
-        fail: health.checks.filter(c => c.status === 'fail').length,
-      },
+      summary,
+      passCount,
     }
   } catch (err) {
     findings.push({
@@ -71,6 +80,6 @@ export async function evaluateOrganizationHealth(
       recommendation:
         'Check Agentia authentication, access permissions, and connectivity, then rerun the assessment.',
     })
-    return {findings, summary: null}
+    return {findings, summary: null, passCount: 0}
   }
 }

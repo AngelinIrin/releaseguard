@@ -76,46 +76,94 @@ export default class Assess extends AgentiaCommand {
     findings.push(...workspaceResult.findings)
     findings.push(...hygieneResult.findings)
 
-    // Calculate category summaries
-    const categoryNames: CheckCategory[] = [
-      'Governance',
-      'Pipeline & Topology',
-      'Promotions & Validations',
-      'Quality & Test Coverage',
-      'Workspace & Git Conflicts',
-      'Code & Lint Hygiene',
+    // Separate authentication findings from pipeline topology for clean category accounting
+    const authFindings = topologyResult.findings.filter(f => f.category === 'Authentication')
+    const pipelineFindings = topologyResult.findings.filter(f => f.category === 'Pipeline & Topology')
+
+    // Define category evaluation breakdown
+    const categoryConfigs: {
+      category: CheckCategory
+      findings: Finding[]
+      passCount: number
+    }[] = [
+      {
+        category: 'Governance',
+        findings: orgHealthResult.findings,
+        passCount: orgHealthResult.passCount,
+      },
+      {
+        category: 'Pipeline & Topology',
+        findings: pipelineFindings,
+        passCount: topologyResult.passCount,
+      },
+      {
+        category: 'Authentication',
+        findings: authFindings,
+        passCount: Object.values(topologyResult.authStatus).filter(c => c.configured && c.ready === true).length,
+      },
+      {
+        category: 'Promotions & Validations',
+        findings: promotionsResult.findings,
+        passCount: promotionsResult.passCount,
+      },
+      {
+        category: 'Quality & Test Coverage',
+        findings: jobsResult.findings,
+        passCount: jobsResult.passCount,
+      },
+      {
+        category: 'Workspace & Git Conflicts',
+        findings: workspaceResult.findings,
+        passCount: workspaceResult.passCount,
+      },
+      {
+        category: 'Code & Lint Hygiene',
+        findings: hygieneResult.findings,
+        passCount: hygieneResult.passCount,
+      },
     ]
 
-    const categories: CategorySummary[] = categoryNames.map(category => {
-      const catFindings = findings.filter(f => f.category === category)
-      const failCount = catFindings.filter(f => f.severity === 'FAIL').length
-      const warnCount = catFindings.filter(f => f.severity === 'WARN').length
-      const unknownCount = catFindings.filter(f => f.severity === 'UNKNOWN').length
+    const categories: CategorySummary[] = categoryConfigs.map(c => {
+      const failCount = c.findings.filter(f => f.severity === 'FAIL').length
+      const warnCount = c.findings.filter(f => f.severity === 'WARN').length
+      const unknownCount = c.findings.filter(f => f.severity === 'UNKNOWN').length
 
       let status: Severity = 'PASS'
       if (failCount > 0) status = 'FAIL'
       else if (warnCount > 0) status = 'WARN'
-      else if (unknownCount > 0) status = 'UNKNOWN'
+      else if (unknownCount > 0 && c.passCount === 0) status = 'UNKNOWN'
+      else if (unknownCount > 0) status = 'WARN'
+
+      const totalCount = c.passCount + failCount + warnCount + unknownCount
 
       return {
-        category,
+        category: c.category,
         status,
-        passCount: catFindings.filter(f => f.severity === 'PASS').length,
+        passCount: c.passCount,
         warnCount,
         failCount,
         unknownCount,
-        totalCount: catFindings.length,
+        totalCount,
       }
     })
 
+    // Calculate total individual checks evaluated across all suites
+    const totalPassed = categories.reduce((acc, cat) => acc + cat.passCount, 0)
+    const totalWarnings = findings.filter(f => f.severity === 'WARN').length
+    const totalFailures = findings.filter(f => f.severity === 'FAIL').length
+    const totalUnknowns = findings.filter(f => f.severity === 'UNKNOWN').length
+    const totalChecks = totalPassed + totalWarnings + totalFailures + totalUnknowns
+
     // Determine overall assessment status
-    const overall = findings.some(f => f.severity === 'FAIL')
+    const overall = totalFailures > 0
       ? 'FAIL'
-      : findings.some(f => f.severity === 'WARN')
+      : totalWarnings > 0
         ? 'REVIEW'
-        : findings.some(f => f.severity === 'UNKNOWN')
+        : totalUnknowns > 0 && totalPassed === 0
           ? 'INCOMPLETE'
-          : 'PASS'
+          : totalUnknowns > 0
+            ? 'REVIEW'
+            : 'PASS'
 
     // Optional AI Advisor analysis
     let aiAdvice = null
@@ -130,11 +178,11 @@ export default class Assess extends AgentiaCommand {
       timestamp: new Date().toISOString(),
       overall,
       counts: {
-        passed: categories.filter(c => c.status === 'PASS').length,
-        warnings: findings.filter(f => f.severity === 'WARN').length,
-        failures: findings.filter(f => f.severity === 'FAIL').length,
-        unknowns: findings.filter(f => f.severity === 'UNKNOWN').length,
-        total: findings.length,
+        passed: totalPassed,
+        warnings: totalWarnings,
+        failures: totalFailures,
+        unknowns: totalUnknowns,
+        total: totalChecks,
       },
       categories,
       inventory: {
@@ -164,6 +212,7 @@ export default class Assess extends AgentiaCommand {
       this.log('  ReleaseGuard — Pre-Flight Release Readiness Cockpit')
       this.log('========================================================================')
       this.log(`  Overall Status:  ${this.formatBadge(overall)}`)
+      this.log(`  Total Checks:    ${report.counts.total} (${report.counts.passed} Passed, ${report.counts.warnings} Warnings, ${report.counts.failures} Failures, ${report.counts.unknowns} Incomplete)`)
       this.log(`  Active Story:    ${report.inventory.activeStory ?? 'None linked'}`)
       this.log(`  Active Branch:   ${report.inventory.branch ?? 'Not detected'} ${report.inventory.baseBranch ? `(Base: ${report.inventory.baseBranch})` : ''}`)
       this.log(`  Inventory:       ${report.inventory.pipelines ?? 0} Pipelines | ${report.inventory.promotions ?? 0} Promotions | ${report.inventory.environments ?? 0} Environments | ${report.inventory.jobs ?? 0} Jobs`)
@@ -176,12 +225,20 @@ export default class Assess extends AgentiaCommand {
           [
             {field: 'status', header: 'Status'},
             {field: 'category', header: 'Check Category'},
+            {field: 'passed', header: 'Passed Checks'},
             {field: 'issues', header: 'Issues Detected'},
           ],
           categories.map(c => ({
             status: this.formatBadge(c.status),
             category: c.category,
-            issues: c.failCount > 0 ? `${c.failCount} Failure(s)` : c.warnCount > 0 ? `${c.warnCount} Warning(s)` : c.unknownCount > 0 ? `${c.unknownCount} Incomplete/Pending` : 'All clear',
+            passed: `${c.passCount} / ${c.totalCount}`,
+            issues: c.failCount > 0
+              ? `${c.failCount} Failure(s)`
+              : c.warnCount > 0
+                ? `${c.warnCount} Warning(s)`
+                : c.unknownCount > 0
+                  ? `${c.unknownCount} Incomplete`
+                  : 'All clear',
           })),
         ),
       )
