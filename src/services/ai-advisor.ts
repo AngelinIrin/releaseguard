@@ -59,16 +59,16 @@ ${issuesSummary}`
       }
     }
   } catch (err) {
-    // Graceful fallback when AI credentials are not configured or quota unavailable
-    return {
-      summary: `Automated rule-based risk evaluation: ${failCount} blocker(s) and ${warnCount} warning(s) detected.`,
-      recommendations: findings
-        .filter(f => f.severity === 'FAIL' || f.severity === 'WARN')
-        .slice(0, 3)
-        .map(f => f.recommendation),
-      riskLevel,
-    }
+    // Fall through to rule-based fallback
   }
 
-  return null
+  // Graceful fallback when AI returns empty, credentials not configured, or call throws
+  return {
+    summary: `Automated rule-based risk evaluation: ${failCount} blocker(s) and ${warnCount} warning(s) detected.`,
+    recommendations: findings
+      .filter(f => f.severity === 'FAIL' || f.severity === 'WARN')
+      .slice(0, 3)
+      .map(f => f.recommendation),
+    riskLevel,
+  }
 }
