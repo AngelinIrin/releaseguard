@@ -2,21 +2,24 @@ import {describe, it} from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
+import os from 'node:os'
+import {execSync} from 'node:child_process'
 import {fileURLToPath} from 'node:url'
 import {evaluateOrganizationHealth} from '../dist/checks/org-health.js'
 import {evaluatePipelineTopology} from '../dist/checks/pipeline-topology.js'
 import {evaluatePromotionsAndValidations} from '../dist/checks/promotions-validation.js'
 import {evaluateJobsAndApexTests} from '../dist/checks/jobs-apex-tests.js'
+import {evaluateWorkspaceAndGitConflicts} from '../dist/checks/workspace-git.js'
 import type {AgentiaPluginHost} from '@copado/agentia-plugin-sdk'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const fixturesDir = path.join(__dirname, 'fixtures')
 
-describe('Enterprise Fixtures Comprehensive Test Suite', () => {
-  // 1. Enterprise Governance Health (18 Rules)
+describe('Enterprise Integration & Real Git Scenarios Test Suite', () => {
+  // 1. Enterprise Governance Health (18 Rules Evaluator Integration)
   describe('1. Enterprise Copado Governance Health (18 Rules)', () => {
-    it('evaluates enterprise health check with 14 PASS, 2 WARN, and 2 FAIL', async () => {
+    it('evaluates all 18 enterprise rules and verifies summary and findings', async () => {
       const healthData = JSON.parse(
         fs.readFileSync(path.join(fixturesDir, 'enterprise-health.json'), 'utf8'),
       )
@@ -29,9 +32,16 @@ describe('Enterprise Fixtures Comprehensive Test Suite', () => {
 
       const result = await evaluateOrganizationHealth(mockHost)
 
-      // Summary checks
-      assert.equal(result.summary?.total, 18)
+      // Summary assertions - all 18 rules accounted for
+      assert.ok(result.summary)
+      assert.equal(result.summary.total, 18)
+      assert.equal(result.summary.pass, 14)
+      assert.equal(result.summary.warn, 2)
+      assert.equal(result.summary.fail, 2)
       assert.equal(result.passCount, 14)
+
+      // Only non-passing rules produce findings in ReleaseGuard
+      assert.equal(result.findings.length, 4)
 
       const failFindings = result.findings.filter(f => f.severity === 'FAIL')
       const warnFindings = result.findings.filter(f => f.severity === 'WARN')
@@ -51,6 +61,10 @@ describe('Enterprise Fixtures Comprehensive Test Suite', () => {
       const staleWarn = warnFindings.find(f => f.check.includes('Stale'))
       assert.ok(staleWarn)
       assert.match(staleWarn.evidence, /30 calendar days/)
+
+      const apiWarn = warnFindings.find(f => f.check.includes('API Consumption'))
+      assert.ok(apiWarn)
+      assert.match(apiWarn.evidence, /82% of org threshold/)
     })
   })
 
@@ -70,7 +84,7 @@ describe('Enterprise Fixtures Comprehensive Test Suite', () => {
       const result = await evaluatePromotionsAndValidations(mockHost)
 
       assert.equal(result.promotionsCount, 4)
-      assert.equal(result.passCount, 1, 'Only PROMO-0004131 (Completed) counts as PASS')
+      assert.equal(result.passCount, 1, 'Only PROMO-0004131 (Completed) counts as clean PASS')
 
       const failFindings = result.findings.filter(f => f.severity === 'FAIL')
       const warnFindings = result.findings.filter(f => f.severity === 'WARN')
@@ -173,6 +187,101 @@ describe('Enterprise Fixtures Comprehensive Test Suite', () => {
 
       // Healthy pipeline counted in passCount
       assert.ok(result.passCount >= 3)
+    })
+  })
+
+  // 5. Genuine Git Repository Conflict & Uncommitted Changes Test
+  describe('5. Genuine Git Repository 3-Way Merge Conflict Test', () => {
+    it('creates a temporary Git repo with genuinely conflicting changes and detects conflict via git merge-tree', async () => {
+      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rg-git-conflict-'))
+
+      try {
+        // Initialize real Git repository
+        execSync('git init -b main', {cwd: tempDir, stdio: 'ignore'})
+        execSync('git config user.name "ReleaseGuard Test"', {cwd: tempDir, stdio: 'ignore'})
+        execSync('git config user.email "test@releaseguard.dev"', {cwd: tempDir, stdio: 'ignore'})
+
+        // 1. Commit initial base file on main
+        const baseContent = [
+          'public with sharing class PaymentGatewayService {',
+          '    public static HttpResponse sendPayment(Decimal amount) {',
+          '        HttpRequest req = new HttpRequest();',
+          '        req.setEndpoint("https://api.gateway.example.com/v1/charge");',
+          '        return new Http().send(req);',
+          '    }',
+          '}',
+        ].join('\n')
+        fs.writeFileSync(path.join(tempDir, 'PaymentGatewayService.cls'), baseContent, 'utf8')
+        execSync('git add .', {cwd: tempDir, stdio: 'ignore'})
+        execSync('git commit -m "feat: initial PaymentGatewayService on main"', {cwd: tempDir, stdio: 'ignore'})
+
+        // 2. Branch out to feature branch and change line 4
+        execSync('git checkout -b feature/US-0000024', {cwd: tempDir, stdio: 'ignore'})
+        const featureContent = [
+          'public with sharing class PaymentGatewayService {',
+          '    public static HttpResponse sendPayment(Decimal amount) {',
+          '        HttpRequest req = new HttpRequest();',
+          '        req.setEndpoint("https://api.v2.feature-endpoint.example.com/v2/charge");',
+          '        return new Http().send(req);',
+          '    }',
+          '}',
+        ].join('\n')
+        fs.writeFileSync(path.join(tempDir, 'PaymentGatewayService.cls'), featureContent, 'utf8')
+        execSync('git add .', {cwd: tempDir, stdio: 'ignore'})
+        execSync('git commit -m "feat: updated endpoint to v2 feature endpoint"', {cwd: tempDir, stdio: 'ignore'})
+
+        // 3. Switch back to main and commit a conflicting change on line 4
+        execSync('git checkout main', {cwd: tempDir, stdio: 'ignore'})
+        const conflictingMainContent = [
+          'public with sharing class PaymentGatewayService {',
+          '    public static HttpResponse sendPayment(Decimal amount) {',
+          '        HttpRequest req = new HttpRequest();',
+          '        req.setEndpoint("https://api.conflicting-security-patch.example.com/secure/charge");',
+          '        return new Http().send(req);',
+          '    }',
+          '}',
+        ].join('\n')
+        fs.writeFileSync(path.join(tempDir, 'PaymentGatewayService.cls'), conflictingMainContent, 'utf8')
+        execSync('git add .', {cwd: tempDir, stdio: 'ignore'})
+        execSync('git commit -m "fix: updated endpoint to conflicting security patch"', {cwd: tempDir, stdio: 'ignore'})
+
+        // 4. Return to feature branch
+        execSync('git checkout feature/US-0000024', {cwd: tempDir, stdio: 'ignore'})
+
+        // 5. Invoke ReleaseGuard's real evaluateWorkspaceAndGitConflicts in the temporary repo
+        const mockHost = {
+          workspace: {
+            current: async () => ({
+              branch: 'feature/US-0000024',
+              baseBranch: 'main',
+              workItemName: 'US-0000024',
+            }),
+          },
+        } as unknown as AgentiaPluginHost
+
+        const result = await evaluateWorkspaceAndGitConflicts(mockHost, {cwd: tempDir})
+
+        // Verify that ReleaseGuard's git merge-tree detected the genuine 3-way conflict!
+        const conflictFinding = result.findings.find(f => f.severity === 'FAIL' && f.check.includes('Metadata merge conflict'))
+        assert.ok(conflictFinding, 'Must detect genuine 3-way merge conflict between feature/US-0000024 and main')
+        assert.equal(conflictFinding?.severity, 'FAIL')
+        assert.match(conflictFinding?.evidence ?? '', /conflicting metadata changes with target base branch 'main'/)
+        assert.match(conflictFinding?.recommendation ?? '', /resolve merge conflicts before promoting/)
+
+        // 6. Test Dirty/Uncommitted metadata detection
+        fs.writeFileSync(path.join(tempDir, 'UnsavedMetadata.cls'), 'public class UnsavedMetadata {}', 'utf8')
+        const dirtyResult = await evaluateWorkspaceAndGitConflicts(mockHost, {cwd: tempDir})
+
+        const dirtyFinding = dirtyResult.findings.find(f => f.severity === 'WARN' && f.check.includes('Uncommitted metadata'))
+        assert.ok(dirtyFinding, 'Must detect dirty working tree when untracked files are present')
+        assert.equal(dirtyFinding?.severity, 'WARN')
+        assert.match(dirtyFinding?.evidence ?? '', /Working tree has 1 uncommitted or untracked changes/)
+      } finally {
+        // Safe cleanup
+        try {
+          fs.rmSync(tempDir, {recursive: true, force: true})
+        } catch {}
+      }
     })
   })
 })

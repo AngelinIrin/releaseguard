@@ -4,6 +4,7 @@ import type {Finding} from '../types.js'
 
 export async function evaluateWorkspaceAndGitConflicts(
   host: AgentiaPluginHost,
+  options?: {cwd?: string},
 ): Promise<{
   findings: Finding[]
   passCount: number
@@ -43,6 +44,7 @@ export async function evaluateWorkspaceAndGitConflicts(
     // 1. Check current git branch if not provided by workspace
     if (!branch) {
       const gitBranchOut = execSync('git rev-parse --abbrev-ref HEAD', {
+        cwd: options?.cwd,
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'ignore'],
         timeout: 3000,
@@ -54,6 +56,7 @@ export async function evaluateWorkspaceAndGitConflicts(
 
     // 2. Check for dirty working tree / uncommitted metadata
     const statusOut = execSync('git status --porcelain', {
+      cwd: options?.cwd,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
       timeout: 3000,
@@ -79,12 +82,14 @@ export async function evaluateWorkspaceAndGitConflicts(
         let mergeBase = ''
         try {
           mergeBase = execSync(`git merge-base HEAD origin/${baseBranch}`, {
+            cwd: options?.cwd,
             encoding: 'utf8',
             stdio: ['ignore', 'pipe', 'ignore'],
             timeout: 4000,
           }).trim()
         } catch {
           mergeBase = execSync(`git merge-base HEAD ${baseBranch}`, {
+            cwd: options?.cwd,
             encoding: 'utf8',
             stdio: ['ignore', 'pipe', 'ignore'],
             timeout: 4000,
@@ -95,12 +100,14 @@ export async function evaluateWorkspaceAndGitConflicts(
           let mergeTree = ''
           try {
             mergeTree = execSync(`git merge-tree ${mergeBase} HEAD origin/${baseBranch}`, {
+              cwd: options?.cwd,
               encoding: 'utf8',
               stdio: ['ignore', 'pipe', 'ignore'],
               timeout: 5000,
             })
           } catch {
             mergeTree = execSync(`git merge-tree ${mergeBase} HEAD ${baseBranch}`, {
+              cwd: options?.cwd,
               encoding: 'utf8',
               stdio: ['ignore', 'pipe', 'ignore'],
               timeout: 5000,
