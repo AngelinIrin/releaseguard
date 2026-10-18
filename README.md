@@ -189,7 +189,7 @@ src/
 
 ## 🧪 Automated Testing & Verification Suite
 
-ReleaseGuard is validated with a comprehensive test suite of **29 automated tests across 17 test suites**, covering all dimensions with real enterprise datasets:
+ReleaseGuard is validated with a comprehensive test suite of **30 automated tests across 18 test suites**, covering all dimensions with real enterprise datasets:
 
 ```bash
 npm test
@@ -200,7 +200,7 @@ npm test
 - **Multi-Stage Pipeline Topology**: [enterprise-pipelines.json](file:///c:/Users/HP/ReleaseGuard/releaseguard/test/fixtures/enterprise-pipelines.json) validates 5-tier pipelines (`Dev1` &rarr; `Dev2` &rarr; `INT` &rarr; `UAT` &rarr; `Staging` &rarr; `Production`), inactive pipelines, and broken/orphaned connections.
 - **Promotions & Validations**: [enterprise-promotions.json](file:///c:/Users/HP/ReleaseGuard/releaseguard/test/fixtures/enterprise-promotions.json) verifies detection of Validation Failures, Merge Conflicts, and Cancelled promotions.
 - **Apex Unit Tests & Coverage**: [enterprise-jobs.json](file:///c:/Users/HP/ReleaseGuard/releaseguard/test/fixtures/enterprise-jobs.json) simulates test failures, 64% coverage drops (< 75% threshold), PMD static analysis violations, and check-only validations.
-- **Git Working Tree**: Evaluates uncommitted Salesforce metadata, branch divergence, and non-destructive 3-way merge conflict pre-checks (`git merge-tree`).
+- **Real Git 3-Way Merge Conflict**: Spins up an actual temporary Git repository (`PaymentGatewayService.cls`) with genuine conflicting commits between feature branch and base branch, proving that `git merge-tree` and uncommitted metadata detectors flag real `FAIL` and `WARN` statuses before promotion.
 
 ---
 
