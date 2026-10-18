@@ -1,0 +1,82 @@
+{
+  "name": "agentia-cli-releaseguard",
+  "description": "Intelligent Salesforce Pre-Flight Release Readiness Assessment for Agentia CLI",
+  "version": "0.2.0",
+  "author": "Angelin Irin S",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": "./dist/index.js",
+  "license": "MIT",
+  "keywords": [
+    "oclif-plugin",
+    "agentia",
+    "releaseguard",
+    "copado",
+    "salesforce",
+    "devops"
+  ],
+  "files": [
+    "/dist",
+    "/oclif.manifest.json"
+  ],
+  "dependencies": {
+    "@copado/agentia-plugin-sdk": "^0.1.1"
+  },
+  "peerDependencies": {
+    "@oclif/core": "^4"
+  },
+  "devDependencies": {
+    "@oclif/core": "^4",
+    "@types/node": "^22",
+    "oclif": "^4",
+    "shx": "^0.3.3",
+    "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "agentia": {
+    "hostApi": 1,
+    "requires": [
+      "auth.status",
+      "format.table",
+      "organization.healthCheck",
+      "pipeline.list",
+      "pipeline.get",
+      "promotion.list",
+      "environment.list",
+      "job.list",
+      "workspace.current",
+      "ai.ask"
+    ],
+    "permissions": {
+      "network": [],
+      "files": "read",
+      "commands": [
+        "git",
+        "npx"
+      ],
+      "env": []
+    }
+  },
+  "oclif": {
+    "bin": "agentia",
+    "dirname": "agentia-cli",
+    "commands": "./dist/commands",
+    "topics": {
+      "sample": {
+        "description": "Sample plugin commands"
+      },
+      "releaseguard": {
+        "description": "Pre-flight release readiness assessment"
+      }
+    }
+  },
+  "scripts": {
+    "build": "shx rm -rf dist && tsc -b",
+    "clean": "shx rm -f oclif.manifest.json",
+    "prepack": "npm run build && oclif manifest",
+    "postpack": "npm run clean"
+  }
+}
