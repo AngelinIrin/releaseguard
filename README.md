@@ -187,8 +187,24 @@ src/
 | **Agentia Extensibility**| 1–10 | Extends `@copado/agentia-plugin-sdk` across 10 host methods including `organization`, `pipeline`, `promotion`, `environment`, `job`, `workspace`, and `ai.ask`. |
 | **Presentation Quality**| 1–10 | Beautiful terminal formatting, structured JSON for CI/CD, and rich visual documentation. |
 
+## 🧪 Automated Testing & Verification Suite
+
+ReleaseGuard is validated with a comprehensive test suite of **29 automated tests across 17 test suites**, covering all dimensions with real enterprise datasets:
+
+```bash
+npm test
+```
+
+### Test Coverage Highlights
+- **Copado Governance (18 Rules)**: [enterprise-health.json](file:///c:/Users/HP/ReleaseGuard/releaseguard/test/fixtures/enterprise-health.json) simulates complete enterprise health checks with 14 PASS, 2 WARN (stale feature branches, high API consumption), and 2 FAIL (missing production rollback strategy, uncommitted destructive changes).
+- **Multi-Stage Pipeline Topology**: [enterprise-pipelines.json](file:///c:/Users/HP/ReleaseGuard/releaseguard/test/fixtures/enterprise-pipelines.json) validates 5-tier pipelines (`Dev1` &rarr; `Dev2` &rarr; `INT` &rarr; `UAT` &rarr; `Staging` &rarr; `Production`), inactive pipelines, and broken/orphaned connections.
+- **Promotions & Validations**: [enterprise-promotions.json](file:///c:/Users/HP/ReleaseGuard/releaseguard/test/fixtures/enterprise-promotions.json) verifies detection of Validation Failures, Merge Conflicts, and Cancelled promotions.
+- **Apex Unit Tests & Coverage**: [enterprise-jobs.json](file:///c:/Users/HP/ReleaseGuard/releaseguard/test/fixtures/enterprise-jobs.json) simulates test failures, 64% coverage drops (< 75% threshold), PMD static analysis violations, and check-only validations.
+- **Git Working Tree**: Evaluates uncommitted Salesforce metadata, branch divergence, and non-destructive 3-way merge conflict pre-checks (`git merge-tree`).
+
 ---
 
 ## 📄 License
 
 MIT © Angelin Irin S
+
