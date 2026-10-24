@@ -1,5 +1,6 @@
-import type {AgentiaPluginHost} from '@copado/agentia-plugin-sdk'
-import type {Finding} from '../types.js'
+
+import type { AgentiaPluginHost } from '@copado/agentia-plugin-sdk'
+import type { Finding } from '../types.js'
 
 export async function askReleaseAdvisor(
   host: AgentiaPluginHost,

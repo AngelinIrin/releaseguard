@@ -189,11 +189,13 @@ describe('ReleaseGuard Comprehensive Validation Scenarios', () => {
     function computeExitCode(
       overall: Severity | 'REVIEW' | 'INCOMPLETE',
       flags: {strict?: boolean; advisory?: boolean; 'fail-closed'?: boolean} = {},
+      totalUnknowns = 0,
+      totalWarnings = 0,
     ): number {
       if (!flags.advisory) {
         if (overall === 'FAIL') return 1
-        if (flags.strict && (overall === 'REVIEW' || overall === 'INCOMPLETE')) return 1
-        if (flags['fail-closed'] && overall === 'INCOMPLETE') return 1
+        if (flags.strict && (overall === 'REVIEW' || overall === 'INCOMPLETE' || totalWarnings > 0 || totalUnknowns > 0)) return 1
+        if (flags['fail-closed'] && (overall === 'INCOMPLETE' || totalUnknowns > 0)) return 1
       }
       return 0
     }
@@ -226,8 +228,12 @@ describe('ReleaseGuard Comprehensive Validation Scenarios', () => {
       assert.equal(computeExitCode('INCOMPLETE', {'fail-closed': true}), 1)
     })
 
-    it('permits (exit 0) on REVIEW when --fail-closed is enabled (warnings remain advisory)', () => {
-      assert.equal(computeExitCode('REVIEW', {'fail-closed': true}), 0)
+    it('permits (exit 0) on REVIEW when --fail-closed is enabled (warnings remain advisory, 0 unknowns)', () => {
+      assert.equal(computeExitCode('REVIEW', {'fail-closed': true}, 0), 0)
+    })
+
+    it('blocks (exit 1) on REVIEW when --fail-closed is enabled and missing evidence (UNKNOWN) is present', () => {
+      assert.equal(computeExitCode('REVIEW', {'fail-closed': true}, 2), 1)
     })
 
     it('does not block (exit 0) even on FAIL when --advisory is enabled', () => {

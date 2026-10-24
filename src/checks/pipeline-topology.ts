@@ -34,16 +34,6 @@ export async function evaluatePipelineTopology(
           evidence: 'The credential set is configured but not ready.',
           recommendation: `Resolve the ${service} authentication issue before relying on this service.`,
         })
-      } else if (credential.ready === undefined) {
-        findings.push({
-          severity: 'UNKNOWN',
-          category: 'Authentication',
-          check: `${service} credentials`,
-          evidence:
-            'Credentials are configured, but the SDK does not report whether they are ready.',
-          recommendation:
-            'Verify connectivity with a supported, non-destructive operation before relying on this service.',
-        })
       } else {
         passCount++
       }

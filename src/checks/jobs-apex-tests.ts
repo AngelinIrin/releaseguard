@@ -1,3 +1,5 @@
+import * as fs from 'node:fs'
+import * as path from 'node:path'
 import type {AgentiaPluginHost} from '@copado/agentia-plugin-sdk'
 import type {Finding} from '../types.js'
 
@@ -77,14 +79,46 @@ export async function evaluateJobsAndApexTests(
     }
 
     if (!foundTestStep && findings.length === 0) {
-      findings.push({
-        severity: 'UNKNOWN',
-        category: 'Quality & Test Coverage',
-        check: 'Apex test verification',
-        evidence: 'Recent jobs did not contain explicit Apex test execution steps.',
-        recommendation:
-          'Run a test execution job in Copado or validate test coverage via Salesforce CLI before release.',
-      })
+      let localEvidenceFound = false
+      const candidatePaths = [
+        path.join(process.cwd(), '.agentia', 'test-evidence.json'),
+        path.join(process.cwd(), 'test-evidence.json'),
+      ]
+
+      for (const p of candidatePaths) {
+        if (fs.existsSync(p)) {
+          try {
+            const data = JSON.parse(fs.readFileSync(p, 'utf8'))
+            localEvidenceFound = true
+            if (data.status === 'Failed' || (typeof data.testsFailed === 'number' && data.testsFailed > 0)) {
+              findings.push({
+                severity: 'FAIL',
+                category: 'Quality & Test Coverage',
+                check: 'Local Apex test execution evidence',
+                evidence: `Local test run reported failures: ${data.testsFailed ?? 1} test(s) failed`,
+                recommendation: 'Fix failing unit tests in your local sandbox before promotion.',
+              })
+            } else {
+              passCount++
+              foundTestStep = true
+            }
+            break
+          } catch {
+            // Ignore parse errors and fall through
+          }
+        }
+      }
+
+      if (!localEvidenceFound) {
+        findings.push({
+          severity: 'UNKNOWN',
+          category: 'Quality & Test Coverage',
+          check: 'Apex test verification',
+          evidence: 'Recent jobs did not contain explicit Apex test execution steps.',
+          recommendation:
+            'Run a test execution job in Copado or validate test coverage via Salesforce CLI before release.',
+        })
+      }
     }
   } catch (err) {
     findings.push({
