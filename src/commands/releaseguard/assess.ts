@@ -303,11 +303,11 @@ export default class Assess extends AgentiaCommand {
     // --fail-closed: Elevates UNKNOWN (missing evidence) to block (exit code 1)
     // --advisory: Never blocks (exit code 0)
     if (!flags.advisory) {
-      if (overall === 'FAIL') {
+      if (overall === 'FAIL' || totalFailures > 0) {
         process.exitCode = 1
-      } else if (flags.strict && (overall === 'REVIEW' || overall === 'INCOMPLETE')) {
+      } else if (flags.strict && (overall === 'REVIEW' || overall === 'INCOMPLETE' || totalWarnings > 0 || totalUnknowns > 0)) {
         process.exitCode = 1
-      } else if (flags['fail-closed'] && overall === 'INCOMPLETE') {
+      } else if (flags['fail-closed'] && (overall === 'INCOMPLETE' || totalUnknowns > 0)) {
         process.exitCode = 1
       }
     }
